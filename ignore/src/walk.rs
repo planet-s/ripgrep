@@ -379,7 +379,21 @@ impl DirEntryRaw {
         })
     }
 
-    #[cfg(not(unix))]
+    #[cfg(not(any(windows, unix)))]
+    fn from_entry_os(
+        depth: usize,
+        ent: &fs::DirEntry,
+        ty: fs::FileType,
+    ) -> Result<DirEntryRaw, Error> {
+        Ok(DirEntryRaw {
+            path: ent.path(),
+            ty: ty,
+            follow_link: false,
+            depth: depth,
+        })
+    }
+
+    #[cfg(windows)]
     fn from_path(
         depth: usize,
         pb: PathBuf,
@@ -414,6 +428,23 @@ impl DirEntryRaw {
             follow_link: link,
             depth: depth,
             ino: md.ino(),
+        })
+    }
+
+    #[cfg(not(any(unix, windows)))]
+    fn from_path(
+        depth: usize,
+        pb: PathBuf,
+        link: bool,
+    ) -> Result<DirEntryRaw, Error> {
+        let md = fs::metadata(&pb).map_err(|err| {
+            Error::Io(err).with_path(&pb)
+        })?;
+        Ok(DirEntryRaw {
+            path: pb,
+            ty: md.file_type(),
+            follow_link: link,
+            depth: depth,
         })
     }
 }
